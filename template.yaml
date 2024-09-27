@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Integration Test Driver
+
+Parameters:
+  LogLevel:
+    Description: setting for the log level of the functions
+    Type: String
+    Default: INFO
+    AllowedValues:
+      - DEBUG
+      - INFO
+      - WARNING
+      - ERROR
+      - CRITICAL
+
+Resources:
+  IntegrationTestLoggingPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: "integration-test-logging-policy"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:*
+
+  # this role must have sufficient privilege to run the integration tests
+  IntegrationTestDriverRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "integration-test-driver-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
+        - !Ref IntegrationTestLoggingPolicy
+
+  IntegrationTestDriverLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: "integration-test-driver"
+      Handler: gov.va.med.IntegrationTestDriverHandler
+      CodeUri: .
+      Timeout: 30
+      MemorySize: 8192
+      Runtime: java11
+      Architectures:
+        - x86_64
+      Description: Executes integration tests
+      Role: !GetAtt IntegrationTestDriverRole.Arn
+      Environment:
+        Variables:
+          LOG_LEVEL : !Ref LogLevel
+
+  MyCustomResource:
+    Type: Custom::IntegrationTestStarter
+    Properties:
+      ServiceToken: !Join
+        - ''
+        - - 'arn:aws:lambda:'
+          - !Ref 'AWS::Region'
+          - ':'
+          - !Ref 'AWS::AccountId'
+          - ':function:'
+          - !Ref IntegrationTestDriverLambda
+      ServiceTimeout: 35
+      StackName: !Ref 'AWS::StackName'
+      "key1": "string"
+      "key2": ["list"]
+      "key3": {"key4": "map"}
