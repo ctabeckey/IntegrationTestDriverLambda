@@ -13,6 +13,9 @@ Parameters:
       - WARNING
       - ERROR
       - CRITICAL
+  BuildNumber:
+    Description: An externally generated build number, the integration test event driver depends on this changing
+    Type: String
 
 Resources:
   IntegrationTestLoggingPolicy:
@@ -80,3 +83,4 @@ Resources:
       "key1": "string"
       "key2": ["list"]
       "key3": {"key4": "map"}
+      "build_number": !Ref BuildNumber
